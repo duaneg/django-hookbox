@@ -5,7 +5,7 @@ ROOT = os.path.abspath(os.path.dirname(__file__))
 
 setup(
     name = 'django-hookbox',
-    version = '0.1',
+    version = '0.2',
     description = 'Integrate hookbox with Django.',
     long_description = open(os.path.join(ROOT, 'README.txt')).read(),
     author = 'Duane Griffin',
