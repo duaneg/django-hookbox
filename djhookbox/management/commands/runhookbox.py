@@ -20,24 +20,17 @@ class Command(NoArgsCommand):
                     default = os.path.join(os.path.dirname(sys.executable), 'hookbox'),
                     help = 'hookbox executable', metavar = 'EXE'),
 
-        make_option('-i', '--interface', default = 'localhost',
-                    help = 'the interface hookbox binds to'),
-        make_option('-p', '--port', default = '8001',
-                    help = 'the port hookbox binds to'),
+        make_option('-i', '--interface', help = 'the interface hookbox binds to'),
+        make_option('-p', '--port', help = 'the port hookbox binds to'),
 
-        make_option('--cbhost', default = 'localhost',
-                    help = 'the callback host [%default]', metavar = 'HOST'),
-        make_option('--cbport', default = '80',
-                    help = 'the callback path prefix [%default]', metavar = 'PORT'),
+        make_option('--cbhost', help = 'the callback host', metavar = 'HOST'),
+        make_option('--cbport', help = 'the callback path prefix', metavar = 'PORT'),
         make_option('--cbpath', help = 'the callback path prefix [/hookbox]'),
-        make_option('-s', '--webhook-secret',
-                    help = 'callback secret token', metavar = 'SECRET'),
+        make_option('-s', '--webhook-secret', help = 'callback secret token', metavar = 'SECRET'),
 
-        make_option('-r', '--rest-secret',
-                    help = 'secret web API token', metavar = 'SECRET'),
+        make_option('-r', '--rest-secret', help = 'secret web API token', metavar = 'SECRET'),
 
-        make_option('-a', '--admin-password',
-                    help = 'administrator password', metavar = 'PASSWD'),
+        make_option('-a', '--admin-password', help = 'administrator password', metavar = 'PASSWD'),
     )
 
     help = 'Start a hookbox server.'
