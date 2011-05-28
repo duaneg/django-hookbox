@@ -20,7 +20,7 @@ please let me know how you get on.
 
 Other versions of hookbox (including the latest dev versions) probably will
 *not* work, as things like command-line option names and URLs seem to change
-from frequently. On the other hand, any problems should be easy to fix.
+frequently. On the other hand, any problems should be easy to fix.
 
 ============
 Installation
