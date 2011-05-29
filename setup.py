@@ -13,6 +13,11 @@ setup(
     url = 'https://github.com/duaneg/django-hookbox',
     license = 'BSD',
     packages = find_packages(),
+    install_requires = [
+        'django >= 1.3',
+        'hookbox == 0.3.3',
+        'testfixtures >= 1.9',
+    ],
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
