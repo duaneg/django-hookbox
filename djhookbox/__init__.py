@@ -3,8 +3,7 @@
 
 from django.conf import settings
 
-from .views import register_channel_handler
-from .views import unregister_channel_handler
+from .views import whcallback
 
 from BaseHTTPServer import BaseHTTPRequestHandler
 import json
@@ -14,7 +13,7 @@ import urllib2
 class HookboxError(Exception):
     pass
 
-def server():
+def _server():
     interface = getattr(settings, 'HOOKBOX_INTERFACE', 'localhost')
     port = getattr(settings, 'HOOKBOX_PORT', '8001')
     return "http://%s:%s" % (interface, port)
@@ -22,7 +21,7 @@ def server():
 apitoken = getattr(settings, 'HOOKBOX_REST_SECRET', None)
 
 def _url(method):
-    return '%s/rest/%s' % (server(), method)
+    return '%s/rest/%s' % (_server(), method)
 
 def _send(method, data):
     if apitoken:
@@ -42,7 +41,11 @@ def _send(method, data):
         raise HookboxError(str(err.reason))
 
 def create(channel, options):
-    'Create a channel.'
+    '''
+    Create a channel.
+
+    NOTE: This isn't supported with hookbox 0.3.3.
+    '''
 
     _send('create_channel', {
         'channel_name': channel,

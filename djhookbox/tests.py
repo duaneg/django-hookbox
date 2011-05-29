@@ -22,6 +22,8 @@ import sys
 import threading
 import urllib
 
+from testfixtures import LogCapture
+
 # TODO: Set this from something sensible
 verbose = False
 
@@ -145,42 +147,65 @@ def server(method):
 
 class DjangoHookboxTest(TestCase):
 
-    class ChannelHandler(object):
-        def __init__(self):
-            self.calls = {}
+    def _cb_all(self, op, user, channel = '-'):
+        if channel in self.all_calls:
+            self.all_calls[channel] += 1
+        else:
+            self.all_calls[channel] = 1
+        return None
 
-        def create(self, user, channel):
-            if channel in self.calls:
-                self.calls[channel] += 1
-            else:
-                self.calls[channel] = 1
+    def _cb_create(self, op, user, channel = None):
+        if channel in self.create_calls:
+            self.create_calls[channel] += 1
+        else:
+            self.create_calls[channel] = 1
 
-            if channel == '/a/':
-                return {
-                    'history_size': 2,
-                    'reflective':   False,
-                    'presenceful':  False,
-                    'moderated':    True,
-                }
-            else:
-                return None
+        if channel == '/a/':
+            return {
+                'history_size': 2,
+                'reflective':   False,
+                'presenceful':  False,
+                'moderated':    True,
+            }
+        elif channel == '/b/':
+            return 'denied'
+        elif channel == '/c/':
+            return [False, {'msg': 'also denied'}]
+        else:
+            return None
 
     def setUp(self):
-        self.handler = self.ChannelHandler()
-        djhookbox.views.channel_handlers = []
-        djhookbox.register_channel_handler(self.handler)
+        self.all_calls = {}
+        self.create_calls = {}
+
+        # HACK: don't allow other apps to mess with us or vice versa...
+        self.old_cbs = djhookbox.views._callbacks
+        djhookbox.views._callbacks = []
+        djhookbox.whcallback(self._cb_all)
+        djhookbox.whcallback('create')(self._cb_create)
+
         User.objects.create_user('a', 'a@example.com', 'a').save()
+
+    def tearDown(self):
+        djhookbox.views._callbacks = self.old_cbs
 
     @server
     def test_implicit_create(self):
         djhookbox.publish('/a/', json.dumps({'foo': 'bar'}))
+        self.assertAllCalls({'/a/': 1})
         self.assertCreateCalls({'/a/': 1})
 
     @server
     def test_unauth_create(self):
         self.assertRaises(djhookbox.HookboxError,
                           djhookbox.publish, '/b/', json.dumps({'foo': 'bar'}))
+        self.assertAllCalls({'/b/': 1})
         self.assertCreateCalls({'/b/': 1})
+
+        self.assertRaises(djhookbox.HookboxError,
+                          djhookbox.publish, '/c/', json.dumps({'foo': 'bar'}))
+        self.assertAllCalls({'/b/': 1, '/c/': 1})
+        self.assertCreateCalls({'/b/': 1, '/c/': 1})
 
     @server
     def test_rest_secret(self):
@@ -242,6 +267,92 @@ class DjangoHookboxTest(TestCase):
         doTest('subscribe', {'channel_name': 'b'}, channel = 'b')
         doTest('unsubscribe', {'channel_name': 'b'}, channel = 'b')
 
+    def test_all_cbs(self):
+        self.client.login(username = 'a', password = 'a')
+        params = {
+            'secret': djhookbox.views.secret,
+            'channel_name': 'a',
+        }
+
+        response = self.client.post(reverse('hookbox_connect'), params)
+        self.assertSuccess(response)
+        self.assertAllCalls({'-': 1})
+
+        response = self.client.post(reverse('hookbox_subscribe'), params)
+        self.assertSuccess(response)
+        self.assertAllCalls({'-': 1, 'a': 1})
+
+        response = self.client.post(reverse('hookbox_destroy_channel'), params)
+        self.assertSuccess(response)
+        self.assertAllCalls({'-': 1, 'a': 2})
+
+        response = self.client.post(reverse('hookbox_disconnect'), params)
+        self.assertSuccess(response)
+        self.assertAllCalls({'-': 2, 'a': 2})
+
+    def test_warn_multiple_results(self):
+
+        @djhookbox.whcallback
+        def _cb_1(op, user, channel = '-'):
+            return [True, {}]
+
+        @djhookbox.whcallback
+        def _cb_2(op, user, channel = '-'):
+            return [True, {}]
+
+        with LogCapture() as log:
+            params = {'secret': djhookbox.views.secret}
+
+            response = self.client.post(reverse('hookbox_connect'), params)
+            self.assertSuccess(response)
+            self.assertAllCalls({'-': 1})
+
+            response = self.client.post(reverse('hookbox_disconnect'), params)
+            self.assertSuccess(response)
+            self.assertAllCalls({'-': 2})
+
+            log.check(
+                ('djhookbox', 'WARNING', 'multiple results returned from connect callback'),
+                ('djhookbox', 'WARNING', 'multiple results returned from disconnect callback'),
+            )
+
+    def test_explicit_deny(self):
+        response = self.client.post(reverse('hookbox_create_channel'), {
+            'secret': djhookbox.views.secret,
+            'channel_name': '/b/',
+        })
+
+        data = self.decode(response)
+        self.assertEquals(data[0], False, 'unexpected success')
+        self.assertEquals(data[1], {'msg': 'denied'})
+        self.assertAllCalls({'/b/': 1})
+
+        response = self.client.post(reverse('hookbox_create_channel'), {
+            'secret': djhookbox.views.secret,
+            'channel_name': '/c/',
+        })
+
+        data = self.decode(response)
+        self.assertEquals(data[0], False, 'unexpected success')
+        self.assertEquals(data[1], {'msg': 'also denied'})
+        self.assertAllCalls({'/b/': 1, '/c/': 1})
+
+    def test_callback_error(self):
+
+        @djhookbox.whcallback
+        def _cb_1(op, user, channel = '-'):
+            raise Exception('something bad')
+
+        response = self.client.post(reverse('hookbox_create_channel'), {
+            'secret': djhookbox.views.secret,
+            'channel_name': '/a/',
+        })
+
+        data = self.decode(response)
+        self.assertEquals(data[0], False, 'unexpected success')
+        self.assertEquals(data[1], {'msg': 'something bad'})
+        self.assertAllCalls({'/a/': 1})
+
     def decode(self, response):
         self.assertEquals(response.status_code, 200)
         self.assert_(('Content-Type', 'application/json') in response.items())
@@ -260,5 +371,8 @@ class DjangoHookboxTest(TestCase):
         else:
             self.assert_(data[0])
 
+    def assertAllCalls(self, calls):
+        self.assertEquals(self.all_calls, calls)
+
     def assertCreateCalls(self, calls):
-        self.assertEquals(self.handler.calls, calls)
+        self.assertEquals(self.create_calls, calls)

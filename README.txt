@@ -14,9 +14,10 @@ Requirements
 
     * Django 1.3+
     * Hookbox 0.3.3
+    * testfixtures 1.9.2+ (for unit tests)
 
-It should work with Django 1.2, however it has not been tested. If you try it
-please let me know how you get on.
+It should work with Django 1.2 and earlier versions of testfixtures, however it
+has not been tested. If you try it please let me know how you get on.
 
 Other versions of hookbox (including the latest dev versions) probably will
 *not* work, as things like command-line option names and URLs seem to change
@@ -49,26 +50,26 @@ Add to your ``urls.py``: ::
 CONFIGURATION
 =============
 
-At a minimum you will need to register a channel handler to allow channel
-creation. For example: ::
+At a minimum you will need a channel handler to allow channel creation. E.g.: ::
 
-    class HookboxHandler(object):
-        def create(self, user, channel):
-            if channel.startswith('/good/'):
-                return {
-                  'history_size': 1,
-                  'reflective':   False,
-                  'presenceful':  False,
-                  'moderated':    True,
-                }
-
-    djhookbox.register_channel_handler(HookboxHandler())
+    @whcallback('create')
+    def create_good_channels(op, user, channel = '-'):
+        assert op == 'create'
+        if channel.startswith('/good/'):
+            return {
+              'history_size': 1,
+              'reflective':   False,
+              'presenceful':  False,
+              'moderated':    True,
+            }
+        elif channel.startswith('/bad/'):
+            return 'no cookie for you!'
 
 The first time a user subscribes to a channel it is implicitly created. If no
-registered channel handler returns an options dict this will fail.
+create callback returns an options dict this will fail.
 
-To only allow authorised users to connect and/or subscribe listen for
-connect/subscribe signals and raise an exception if not allowed.
+To fail operations (e.g. deny a subscription attempt) provide callbacks that
+return a failure message or raise an exception.
 
 You will probably also want to configure various hookbox options in
 ``settings.py``. The available options are: ::

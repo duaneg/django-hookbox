@@ -13,14 +13,60 @@ import logging
 logger = logging.getLogger('djhookbox')
 secret = getattr(settings, 'HOOKBOX_WEBHOOK_SECRET', None)
 
-channel_handlers = []
+_callbacks = []
 
-def register_channel_handler(handler):
-    channel_handlers.append(handler)
+def _call_callbacks(op, *args, **kwargs):
+    result = None
+    for callback in [cb for (cbop, cb) in _callbacks if cbop is None or cbop == op]:
+        oneresult = callback(op, *args, **kwargs)
+        if result is None:
+            result = oneresult
+        elif not oneresult is None:
+            logger.warn("multiple results returned from %s callback" % op)
+    return result
 
-def unregister_channel_handler(handler):
-    channel_handlers.remove(handler)
+def whcallback(arg):
+    '''
+    Decorator for functions which handle webhook callbacks.
 
+    Functions must take three arguments: the operation type, user and
+    *optional* channel name. The latter will only be provided for
+    operations on a channel (i.e. not connect/disconnect).
+
+    If a string argument is given the function will only be called for
+    matching webhooks. If no argument is given it will be called for all
+    webhooks.
+
+    Webhooks may optionally return a result, handling of which is dependent on
+    the operation type:
+     - The connect/disconnect operations ignore any results.
+     - Create callbacks should return either a dict containing the channel
+       options or, if they want to disallow channel creation, a failure
+       message (string).
+       If no create callback returns a response the operation is deemed to have
+       *failed*.
+     - Other callbacks may return a failure message (string), a
+       dictionary (which will be returned as a successful response), or a
+       properly formatted hookbox response.
+       If no callback returns a response the operation will be deemed to have
+       *succeded* and an empty success response will be returned.
+
+    In all cases, including connect/disconnect, if more that one callback
+    returns a result the first will be used and a warning will be logged.
+    '''
+
+    # Called without op arg: register the callback for all operations
+    if callable(arg):
+        _callbacks.append((None, arg))
+        return arg
+
+    # Otherwise only register the callback for the specified operation
+    def decorator(method):
+        _callbacks.append((arg, method))
+    return decorator
+
+# TODO: Not sure these are necessary any more, the callbacks provide a super-set
+#       of their functionality.
 signals = {
     'connect':     Signal(),
     'disconnect':  Signal(),
@@ -32,7 +78,8 @@ def webhook(method):
     '''
     Decorator which:
      - checks a WebHook's secret key is correct
-     - exempts the view from CSRF checks.
+     - exempts the view from CSRF checks
+     - massages the return result into the format expected by hookbox
 
     Returns 403 if the secret is required and not present/incorrect.
     '''
@@ -47,9 +94,12 @@ def webhook(method):
                     result = [True, {}]
                 elif isinstance(data, dict):
                     result = [True, data]
+                elif isinstance(data, str):
+                    result = [False, {'msg': data}]
                 else:
                     assert isinstance(data, list)
-                    assert len(list) == 2
+                    assert len(data) == 2
+                    result = data
             except Exception as err:
                 result = [False, {'msg': str(err)}]
         else:
@@ -61,6 +111,7 @@ def webhook(method):
 @webhook
 def connect(request):
     signals['connect'].send(request.user)
+    _call_callbacks('connect', request.user)
     return {
         'name': request.user.username
     }
@@ -68,26 +119,23 @@ def connect(request):
 @webhook
 def disconnect(request):
     signals['disconnect'].send_robust(request.user)
+    _call_callbacks('disconnect', request.user)
 
 @webhook
 def create_channel(request):
-
-    # TODO: Allow handlers to veto create requests
-    for handler in channel_handlers:
-        opts = handler.create(request.user, request.POST['channel_name'])
-        if not opts is None:
-            return opts
-
-    return [False, {}]
+    result = _call_callbacks('create', request.user, request.POST['channel_name'])
+    return result or [False, {'msg': 'unrecognized channel: %s' % request.POST['channel_name']}]
 
 @webhook
 def destroy_channel(request):
-    pass
+    return _call_callbacks('destroy', request.user, channel = request.POST['channel_name'])
 
 @webhook
 def subscribe(request):
     signals['subscribe'].send(request.user, channel = request.POST['channel_name'])
+    return _call_callbacks('subscribe', request.user, channel = request.POST['channel_name'])
 
 @webhook
 def unsubscribe(request):
     signals['unsubscribe'].send_robust(request.user, channel = request.POST['channel_name'])
+    return _call_callbacks('unsubscribe', request.user, channel = request.POST['channel_name'])
