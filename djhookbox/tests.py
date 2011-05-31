@@ -14,6 +14,7 @@ import djhookbox
 from djhookbox.management.commands import runhookbox
 
 import json
+import logging
 import os
 import random
 import re
@@ -302,6 +303,8 @@ class DjangoHookboxTest(TestCase):
 
         with LogCapture() as log:
             params = {'secret': djhookbox.views.secret}
+
+            logging.getLogger('djhookbox').setLevel(logging.WARNING)
 
             response = self.client.post(reverse('hookbox_connect'), params)
             self.assertSuccess(response)
