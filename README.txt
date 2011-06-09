@@ -35,7 +35,7 @@ Add to ``INSTALLED_APPS`` in ``settings.py``: ::
 
     INSTALLED_APPS = (
         ...
-        'django_hookbox',
+        'djhookbox',
         ...
     )
 
