@@ -68,7 +68,7 @@ At a minimum you will need a channel handler to allow channel creation. E.g.: ::
 The first time a user subscribes to a channel it is implicitly created. If no
 create callback returns an options dict this will fail.
 
-To fail operations (e.g. deny a subscription attempt) provide callbacks that
+To fail an operation (e.g. deny a subscription attempt) provide callbacks that
 return a failure message or raise an exception.
 
 You will probably also want to configure various hookbox options in
@@ -91,7 +91,7 @@ A management command is provided to run the hookbox server. See
 ``./manage.py help runhookbox`` for the available options. By default options
 from ``settings.py`` (see above) will be used.
 
-To publish to a channel from with Django call, e.g.: ::
+To publish to a channel from Django call, e.g.: ::
 
     djhookbox.publish('/some-channel/', {'data': 'some-data'})
 
