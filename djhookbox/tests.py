@@ -275,7 +275,7 @@ class DjangoHookboxTest(TestCase):
             'channel_name': 'a',
         }
 
-        response = self.client.post(reverse('hookbox_connect'), params)
+        response = self.client.post(connect_url, params)
         self.assertSuccess(response)
         self.assertAllCalls({'-': 1})
 
@@ -306,7 +306,7 @@ class DjangoHookboxTest(TestCase):
 
             logging.getLogger('djhookbox').setLevel(logging.WARNING)
 
-            response = self.client.post(reverse('hookbox_connect'), params)
+            response = self.client.post(connect_url, params)
             self.assertSuccess(response)
             self.assertAllCalls({'-': 1})
 
