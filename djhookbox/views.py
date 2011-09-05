@@ -9,6 +9,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 import json
 import logging
+import random
+import string
 
 logger = logging.getLogger('djhookbox')
 secret = getattr(settings, 'HOOKBOX_WEBHOOK_SECRET', None)
@@ -121,8 +123,14 @@ def webhook(method):
 def connect(request):
     signals['connect'].send(request.user)
     _call_callbacks('connect', request.user)
+
+    if request.user.is_authenticated():
+        username = request.user.username
+    else:
+        username = ' _' + ''.join(random.choice(string.letters + string.digits) for i in xrange(10))
+
     return {
-        'name': request.user.username
+        'name': username
     }
 
 @webhook
