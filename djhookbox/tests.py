@@ -84,7 +84,7 @@ class TestServerThread(threading.Thread):
         class QuietWSGIRequestHandler(basehttp.WSGIRequestHandler):
             def log_message(self, format, *args):
                 if verbose:
-                    return super(QuietWSGIRequestHandler, self).log_message(self, format, *args)
+                    return basehttp.WSGIRequestHandler.log_message(self, format, *args)
 
         try:
             handler = basehttp.AdminMediaHandler(WSGIHandler())
