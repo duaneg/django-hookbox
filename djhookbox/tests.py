@@ -187,8 +187,11 @@ class DjangoHookboxTest(TestCase):
 
         User.objects.create_user('a', 'a@example.com', 'a').save()
 
+        self.logcap = LogCapture()
+
     def tearDown(self):
         djhookbox.views._callbacks = self.old_cbs
+        self.logcap.uninstall()
 
     @server
     def test_implicit_create(self):
@@ -301,23 +304,22 @@ class DjangoHookboxTest(TestCase):
         def _cb_2(op, user, channel = '-'):
             return [True, {}]
 
-        with LogCapture() as log:
-            params = {'secret': djhookbox.views.secret}
+        params = {'secret': djhookbox.views.secret}
 
-            logging.getLogger('djhookbox').setLevel(logging.WARNING)
+        logging.getLogger('djhookbox').setLevel(logging.WARNING)
 
-            response = self.client.post(connect_url, params)
-            self.assertSuccess(response)
-            self.assertAllCalls({'-': 1})
+        response = self.client.post(connect_url, params)
+        self.assertSuccess(response)
+        self.assertAllCalls({'-': 1})
 
-            response = self.client.post(reverse('hookbox_disconnect'), params)
-            self.assertSuccess(response)
-            self.assertAllCalls({'-': 2})
+        response = self.client.post(reverse('hookbox_disconnect'), params)
+        self.assertSuccess(response)
+        self.assertAllCalls({'-': 2})
 
-            log.check(
-                ('djhookbox', 'WARNING', 'multiple results returned from connect callback'),
-                ('djhookbox', 'WARNING', 'multiple results returned from disconnect callback'),
-            )
+        self.logcap.check(
+            ('djhookbox', 'WARNING', 'multiple results returned from connect callback'),
+            ('djhookbox', 'WARNING', 'multiple results returned from disconnect callback'),
+        )
 
     def test_explicit_deny(self):
         response = self.client.post(reverse('hookbox_create_channel'), {
