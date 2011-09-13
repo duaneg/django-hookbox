@@ -13,13 +13,13 @@ Requirements
 ============
 
     * Django 1.3+
-    * Hookbox 0.3.3
+    * Hookbox 0.3.4dev (https://github.com/hookbox/hookbox.git)
     * testfixtures 1.9.2+ (for unit tests)
 
 It should work with Django 1.2 and earlier versions of testfixtures, however it
 has not been tested. If you try it please let me know how you get on.
 
-Other versions of hookbox (including the latest dev versions) probably will
+Other versions of hookbox (including the latest released version) probably will
 *not* work, as things like command-line option names and URLs seem to change
 frequently. On the other hand, any problems should be easy to fix.
 
@@ -80,7 +80,7 @@ You will probably also want to configure various hookbox options in
     HOOKBOX_CBPORT: The port the Django server listens on.
     HOOKBOX_CBPATH: The path prefix the webhook views are located under.
     HOOKBOX_WEBHOOK_SECRET: A secret token passed by hookbox to webhooks.
-    HOOKBOX_REST_SECRET: A secret token passed by Django to hookbox.
+    HOOKBOX_API_SECURITY_TOKEN: A secret token passed by Django to hookbox.
     HOOKBOX_ADMIN_PASSWORD: The hookbox administrator password.
 
 =====

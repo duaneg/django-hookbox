@@ -234,7 +234,7 @@ class DjangoHookboxTest(TestCase):
             'channel_name': 'a',
         })
         data = self.decode(response)
-        self.assertFalse(data[0], 'webhook secret verification should have failed')
+        self.assertFalse(data[0], 'webhook secret verification should have failed (forgotton to set settings.HOOKBOX_WEBHOOK_SECRET?)')
 
         response = self.client.post(connect_url, {
             'channel_name': 'a',

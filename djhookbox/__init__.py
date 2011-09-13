@@ -6,7 +6,7 @@ from django.conf import settings
 from .views import whcallback
 
 from BaseHTTPServer import BaseHTTPRequestHandler
-import json
+import json # find faster lib
 import urllib
 import urllib2
 
@@ -18,14 +18,14 @@ def _server():
     port = getattr(settings, 'HOOKBOX_PORT', '8001')
     return "http://%s:%s" % (interface, port)
 
-apitoken = getattr(settings, 'HOOKBOX_REST_SECRET', None)
+apitoken = getattr(settings, 'HOOKBOX_API_SECURITY_TOKEN', None)
 
 def _url(method):
-    return '%s/rest/%s' % (_server(), method)
+    return '%s/web/%s' % (_server(), method)
 
 def _send(method, data):
     if apitoken:
-        data['secret'] = apitoken
+        data['security_token'] = apitoken
 
     try:
         req = urllib2.Request(_url(method), urllib.urlencode(data))
@@ -57,7 +57,7 @@ def publish(channel, payload):
 
     _send('publish', {
         'channel_name': channel,
-        'payload':      payload,
+        'payload':      json.dumps(payload),
     })
 
 # TODO: set_state, et al methods
