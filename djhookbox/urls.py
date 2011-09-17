@@ -10,6 +10,8 @@ urlpatterns = patterns('djhookbox.views',
     url(r'^create_channel$',  'create_channel',  name = 'hookbox_create_channel'),
     url(r'^destroy_channel$', 'destroy_channel', name = 'hookbox_destroy_channel'),
 
+    url(r'^publish$', 'publish', name = 'hookbox_publish'),
+
     url(r'^subscribe$',   'subscribe',   name = 'hookbox_subscribe'),
     url(r'^unsubscribe$', 'unsubscribe', name = 'hookbox_unsubscribe'),
 )

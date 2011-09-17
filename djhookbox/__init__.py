@@ -40,16 +40,11 @@ def _send(method, data):
     except urllib2.URLError as err:
         raise HookboxError(str(err.reason))
 
-def create(channel, options):
-    '''
-    Create a channel.
-
-    NOTE: This isn't supported with hookbox 0.3.3.
-    '''
+def create(channel):
+    'Create a channel.'
 
     _send('create_channel', {
         'channel_name': channel,
-        'options':      options,
     })
 
 def publish(channel, payload):

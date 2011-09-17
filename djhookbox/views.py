@@ -31,9 +31,10 @@ def whcallback(arg):
     '''
     Decorator for functions which handle webhook callbacks.
 
-    Functions must take three arguments: the operation type, user and
-    *optional* channel name. The latter will only be provided for
-    operations on a channel (i.e. not connect/disconnect).
+    All functions are called with the operation type and user as the first two
+    arguments. Operations on a channel (i.e. not connect/disconnect) will be
+    called with a channel name as the third argument, and publish will be
+    called with the payload as the fourth argument.
 
     If a string argument is given the function will only be called for
     matching webhooks. If no argument is given it will be called for all
@@ -142,6 +143,10 @@ def disconnect(request):
 def create_channel(request):
     result = _call_callbacks('create', request.user, request.POST['channel_name'])
     return result or [False, {'msg': 'unrecognized channel: %s' % request.POST['channel_name']}]
+
+@webhook
+def publish(request):
+    return _call_callbacks('publish', request.user, request.POST['destination'], request.POST['payload'])
 
 @webhook
 def destroy_channel(request):
