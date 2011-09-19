@@ -111,40 +111,42 @@ def server(method):
         # Start the test server
         server = TestServerThread('localhost', nextport)
         server.start()
-        nextport += 1
-
-        # Start hookbox
-        hookboxcmd = runhookbox.Command()
-        hookboxcmd.start_hookbox({
-            'executable': os.path.join(os.path.dirname(sys.executable), 'hookbox'),
-            'cbport': str(nextport - 1),
-            'port': str(nextport),
-            'admin-password': 'admin',
-        }, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
-
-        # TODO: Retry at different port if cannot bind
-        #       This will be tricky, however, since hookbox prints the
-        #       listening message *before* it binds...
-        output = hookboxcmd.proc.stdout.readline()
-        match = HOOKBOX_STARTED.search(output)
-        if not match:
-            hookboxcmd.proc.kill()
-            raise CommandError('Could not start hookbox server')
-
-        # Update hookbox settings to point to the running server
-        settings.HOOKBOX_PORT = nextport
-        nextport += 1
-
-        # Perform the tests
         try:
-            result = method(self, *args, **kwargs)
+            nextport += 1
+
+            # Start hookbox
+            hookboxcmd = runhookbox.Command()
+            hookboxcmd.start_hookbox({
+                'executable': os.path.join(os.path.dirname(sys.executable), 'hookbox'),
+                'cbport': str(nextport - 1),
+                'port': str(nextport),
+                'admin-password': 'admin',
+            }, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+
+            # TODO: Retry at different port if cannot bind
+            #       This will be tricky, however, since hookbox prints the
+            #       listening message *before* it binds...
+            output = hookboxcmd.proc.stdout.readline()
+            match = HOOKBOX_STARTED.search(output)
+            if not match:
+                hookboxcmd.proc.kill()
+                raise CommandError('Could not start hookbox server: %s' % output)
+
+            # Update hookbox settings to point to the running server
+            settings.HOOKBOX_PORT = nextport
+            nextport += 1
+
+            # Perform the tests
+            try:
+                result = method(self, *args, **kwargs)
+            finally:
+                hookboxcmd.stop_hookbox()
+                if verbose:
+                    for line in hookboxcmd.proc.stdout:
+                        print line.strip('\n')
+            return result
         finally:
-            hookboxcmd.stop_hookbox()
-            if verbose:
-                for line in hookboxcmd.proc.stdout:
-                    print line.strip('\n')
             server.stop()
-        return result
 
     return wrapper
 
