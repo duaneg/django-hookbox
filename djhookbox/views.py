@@ -146,7 +146,7 @@ def create_channel(request):
 
 @webhook
 def publish(request):
-    return _call_callbacks('publish', request.user, request.POST['destination'], request.POST['payload'])
+    return _call_callbacks('publish', request.user, request.POST['channel_name'], request.POST['payload'])
 
 @webhook
 def destroy_channel(request):

@@ -285,7 +285,7 @@ class DjangoHookboxTest(TestCase):
 
         response = self.client.post(reverse('hookbox_publish'), {
             'secret': djhookbox.views.secret,
-            'destination': 'a',
+            'channel_name': 'a',
             'payload': json.dumps(["Hello world"]),
         })
         self.assertSuccess(response)
